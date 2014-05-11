@@ -57,7 +57,7 @@ def compile_all_league_uris():
 # String -> Dictionary
 # Takes a league page URI and returns a dictionary of relevant info
 # Includes: Name, Membership Status, Location, Region
-def get_league_identifying_data(league_page_uri):
+def get_league_data(league_page_uri):
   league_data = {}
 
   # Get the page
@@ -67,7 +67,7 @@ def get_league_identifying_data(league_page_uri):
 
   # Get league name
   name = soup.find('h1').text.encode('ascii', 'ignore')
-  league_data['name'] = name
+  league_data['league_name'] = name
 
   # Get league location
   loc = soup.find('div', 'leagueHeader').findAll('span')[2]['title'].split('-')
@@ -75,20 +75,19 @@ def get_league_identifying_data(league_page_uri):
       location = {'Country' : loc[0], 'State/Province': loc[1], 'City' : loc[2]}
   if len(loc) == 2:
       location = {'Country' : loc[0], 'City': loc[1]}
-  league_data['location'] = location
+  league_data['league_location'] = location
 
   # Get league membership status and region (since they're in the same tag)
   league_info = soup.find('div', 'columnThird').findNext('div', 'columnThird').find('p').text.encode('ascii', 'ignore')
   league_info = [data.strip() for data in league_info.split('\n') if data != '']
-  league_data['status'] = league_info[0].split(' ')[1]
-  league_data['region'] = league_info[1].split(' ')[0]
+  league_data['league_status'] = league_info[0].split(' ')[1]
+  league_data['league_region'] = league_info[1].split(' ')[0]
 
   return league_data
 
 # String -> Dictionary
 # Takes a team roster URI and returns a dictinoary of skaters
-# Dictionary key is skater name, keys are number and position (captain?)
-def get_team_roster(roster_uri):
+def get_team_roster(roster_uri, league_data, team_data):
   # Get the page
   req = urllib2.Request(roster_uri, headers=HEADERS)
   html = urllib2.urlopen(req).read()
@@ -98,11 +97,40 @@ def get_team_roster(roster_uri):
   rows = soup.findAll('tr', 'alignMiddle')
 
   # Get the skaters
-  skaters = {}
+  skaters = []
   for row in rows:
     skater_number = row.find('td').text.encode('ascii', 'ignore')
     skater_name = row.a.text.encode('ascii', 'ignore')
-    skaters.update({skater_name: skater_number})
+    position = row.findAll('td')[2].text.encode('ascii', 'ignore')
+    skater = {
+      'name': skater_name,
+      'number': skater_number,
+      }
+    skater.update(league_data)
+    if position:
+      skater.update({'position': position})
+    skaters.append(skater)
   return skaters
 
-print get_team_roster('https://wftda.com/dashboard/teams/roster/mu7sm8zfdeiq/1')
+# String -> Dictionary
+# Takes the team page of a league and returns a dictionary of the teams' data
+def get_league_teams_data(league_teams_page_uri):
+  # Get the page
+  req = urllib2.Request(league_teams_page_uri, headers=HEADERS)
+  html = urllib2.urlopen(req).read()
+  soup = BeautifulSoup(html, 'lxml')
+
+  rows = soup.findAll('tr', 'even')
+  rows.extend(soup.findAll('tr', 'odd'))
+
+  teams = []
+  for row in rows:
+    team_name = row.td.a.text.encode('ascii', 'ignore')
+    team_type = row.findAll('td')[1].text.encode('ascii', 'ignore')
+    team = {
+        'team name': team_name,
+        'team type': team_type
+        }
+    teams.append(team)
+
+  return teams
