@@ -26,7 +26,7 @@ def get_league_uris_by_page(league_list_page):
 
 # -> List
 # Returns a list of all member league URIs
-def compile_all_member_league_uris():
+def compile_member_league_uris():
   league_uris = []
   # Want a full set of data, or no?
   s = 13 if SMALL else 1
@@ -37,7 +37,7 @@ def compile_all_member_league_uris():
 
 # -> List
 # Returns a list of all apprentice league URIs
-def compile_all_apprentice_league_uris():
+def compile_apprentice_league_uris():
   league_uris = []
   # Want a full set of data, or no?
   s = 6 if SMALL else 1
@@ -58,7 +58,7 @@ def compile_all_league_uris():
 # Takes a league page URI and returns a dictionary of relevant info
 # Includes: Name, Membership Status, Location, Region
 def get_league_data(league_page_uri):
-  league_data = {}
+  league_data = {'wftda_uri': league_page_uri}
 
   # Get the page
   req = urllib2.Request(league_page_uri, headers=HEADERS)
@@ -83,8 +83,34 @@ def get_league_data(league_page_uri):
   league_data['league_status'] = league_info[0].split(' ')[1]
   league_data['league_region'] = league_info[1].split(' ')[0]
 
+  # Get uri to teams list
+  league_team_uri_list = soup.findAll('div', 'columnThird')[1].findAll('a')[4]['href']
+  league_data['team_uri_list'] = BASE_URI + league_team_uri_list
+
   return league_data
 
+# String -> Dictionary
+# Takes the team page of a league and returns a dictionary of the teams' data
+def get_league_teams_data(league_teams_page_uri):
+  # Get the page
+  req = urllib2.Request(league_teams_page_uri, headers=HEADERS)
+  html = urllib2.urlopen(req).read()
+  soup = BeautifulSoup(html, 'lxml')
+
+  rows = soup.findAll('tr', 'even')
+  rows.extend(soup.findAll('tr', 'odd'))
+
+  teams = []
+  for row in rows:
+    team_name = row.td.a.text.encode('ascii', 'ignore')
+    team_type = row.findAll('td')[1].text.encode('ascii', 'ignore')
+    team = {
+        'team name': team_name,
+        'team type': team_type
+        }
+    teams.append(team)
+
+  return teams
 # String -> Dictionary
 # Takes a team roster URI and returns a dictinoary of skaters
 def get_team_roster(roster_uri, league_data, team_data):
@@ -112,25 +138,10 @@ def get_team_roster(roster_uri, league_data, team_data):
     skaters.append(skater)
   return skaters
 
-# String -> Dictionary
-# Takes the team page of a league and returns a dictionary of the teams' data
-def get_league_teams_data(league_teams_page_uri):
-  # Get the page
-  req = urllib2.Request(league_teams_page_uri, headers=HEADERS)
-  html = urllib2.urlopen(req).read()
-  soup = BeautifulSoup(html, 'lxml')
 
-  rows = soup.findAll('tr', 'even')
-  rows.extend(soup.findAll('tr', 'odd'))
+league_uris = compile_member_league_uris()
+leagues = []
+for league in league_uris:
+  leagues.append(get_league_data(league))
 
-  teams = []
-  for row in rows:
-    team_name = row.td.a.text.encode('ascii', 'ignore')
-    team_type = row.findAll('td')[1].text.encode('ascii', 'ignore')
-    team = {
-        'team name': team_name,
-        'team type': team_type
-        }
-    teams.append(team)
-
-  return teams
+print json.dumps(leagues, indent=4)
