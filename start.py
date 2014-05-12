@@ -1,15 +1,14 @@
 import urllib
 import urllib2
 import json
+from session import get_session_id
 from bs4 import BeautifulSoup
 
 SMALL = True
 
 BASE_URI = 'https://www.wftda.com'
-COOKIE = 'fill me in'
-USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'
-REFERER = 'https://wftda.com/dashboard/teams/list/9xdnvp4h1tvs'
-HEADERS = {'User-Agent' : USER_AGENT, 'Cookie' : COOKIE}
+COOKIE = 'wftda_session=%s' % get_session_id()
+HEADERS = {'Cookie' : COOKIE}
 
 # String -> List
 # Takes a URI for a leagues search result and returns a list of all league URIs on the page
