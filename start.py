@@ -1,15 +1,34 @@
 import urllib
 import urllib2
 import json
+import time
 from session import get_session_id
 from bs4 import BeautifulSoup
 
 SMALL = True
-reqs = 0
+start = req_start = time.time()
+total_reqs = reqs = 0
 
 def open(url, data=None):
   global reqs
+  global req_start
+  global total_reqs
+  # No more than 30 requests per minute
+  # Not foolproof, as it's not calculating it on a rolling basis,
+  # but the requests are going to be fairly regular, so it's fine.
+  if reqs > 30:
+    dur = time.time() - req_start
+    if dur < 60:
+      wait = 60 - dur
+      print "Too many requests - waiting %i seconds..." % wait
+      time.sleep(wait)
+      req_start = time.time()
+      reqs = 0
+    else:
+      req_start = time.time()
+      reqs = 0
   reqs += 1
+  total_reqs += 1
   return urllib2.urlopen(url, data=None)
 
 BASE_URI = 'https://www.wftda.com'
@@ -152,10 +171,13 @@ def get_team_roster(roster_uri, league_data, team_data):
     skaters.append(skater)
   return skaters
 
-for league in compile_all_league_uris():
-  league_data = get_league_data(league)
-  #print json.dumps(league_data, indent = 4)
-  for team in get_league_teams_data(league_data['team_uri_list']):
-    team.update(league_data)
-    print json.dumps(team, indent = 4)
+skaters = []
+for league_uri in compile_all_league_uris():
+  league_data = get_league_data(league_uri)
+  for team_data in get_league_teams_data(league_data['team_uri_list']):
+    team_data.update(league_data)
+    print json.dumps(team_data, indent = 4), '\n'
 
+end = time.time()
+dur = end - start
+print '%i requests in %i seconds' % (reqs, dur)
