@@ -5,6 +5,12 @@ from session import get_session_id
 from bs4 import BeautifulSoup
 
 SMALL = True
+reqs = 0
+
+def open(url, data=None):
+  global reqs
+  reqs += 1
+  return urllib2.urlopen(url, data=None)
 
 BASE_URI = 'https://www.wftda.com'
 COOKIE = 'wftda_session=%s' % get_session_id()
@@ -15,7 +21,7 @@ HEADERS = {'Cookie' : COOKIE}
 def get_league_uris_by_page(league_list_page):
   # Get the page
   req = urllib2.Request(league_list_page, headers=HEADERS)
-  html = urllib2.urlopen(req).read()
+  html = open(req).read()
   soup = BeautifulSoup(html, 'lxml')
 
   # Get the URIs
@@ -48,8 +54,8 @@ def compile_apprentice_league_uris():
 # -> List
 # Returns a list of all league URIs
 def compile_all_league_uris():
-  apprentice = compile_all_apprentice_league_uris()
-  members = compile_all_member_league_uris()
+  apprentice = compile_apprentice_league_uris()
+  members = compile_member_league_uris()
   members.extend(apprentice)
   return members
 
@@ -61,7 +67,7 @@ def get_league_data(league_page_uri):
 
   # Get the page
   req = urllib2.Request(league_page_uri, headers=HEADERS)
-  html = urllib2.urlopen(req).read()
+  html = open(req).read()
   soup = BeautifulSoup(html, 'lxml')
 
   # Get league name
@@ -69,11 +75,18 @@ def get_league_data(league_page_uri):
   league_data['league_name'] = name
 
   # Get league location
-  loc = soup.find('div', 'leagueHeader').findAll('span')[2]['title'].split('-')
-  if len(loc) == 3:
-      location = {'Country' : loc[0], 'State/Province': loc[1], 'City' : loc[2]}
+  # Titling cities because some are all caps and that's annoying
+  loc = soup.find('div', 'leagueHeader').findAll('span')[-1]['title'].split('-')
   if len(loc) == 2:
-      location = {'Country' : loc[0], 'City': loc[1]}
+      location = {'Country' : loc[0], 'City': loc[1].title()}
+  elif len(loc) == 3:
+      location = {'Country' : loc[0], 'State/Province': loc[1], 'City' : loc[2].title()}
+  elif len(loc) == 4:
+      location = {'Country' : loc[0], 'State/Province': loc[1],
+      'City' : loc[2].title() + '-' + loc[3].title()}
+  else:
+    print "Unexpected hyphens in header location"
+    raise
   league_data['league_location'] = location
 
   # Get league membership status and region (since they're in the same tag)
@@ -88,12 +101,12 @@ def get_league_data(league_page_uri):
 
   return league_data
 
-# String -> Dictionary
+# String -> List of Dictionaries
 # Takes the team page of a league and returns a dictionary of the teams' data
 def get_league_teams_data(league_teams_page_uri):
   # Get the page
   req = urllib2.Request(league_teams_page_uri, headers=HEADERS)
-  html = urllib2.urlopen(req).read()
+  html = open(req).read()
   soup = BeautifulSoup(html, 'lxml')
 
   rows = soup.findAll('tr', 'even')
@@ -103,9 +116,11 @@ def get_league_teams_data(league_teams_page_uri):
   for row in rows:
     team_name = row.td.a.text.encode('ascii', 'ignore')
     team_type = row.findAll('td')[1].text.encode('ascii', 'ignore')
+    team_roster_uri = row.findAll('a')[-1]['href'].encode('ascii', 'ignore')
     team = {
-        'team name': team_name,
-        'team type': team_type
+        'team_name': team_name,
+        'team_type': team_type,
+        'team_roster_uri': BASE_URI + team_roster_uri
         }
     teams.append(team)
 
@@ -115,7 +130,7 @@ def get_league_teams_data(league_teams_page_uri):
 def get_team_roster(roster_uri, league_data, team_data):
   # Get the page
   req = urllib2.Request(roster_uri, headers=HEADERS)
-  html = urllib2.urlopen(req).read()
+  html = open(req).read()
   soup = BeautifulSoup(html, 'lxml')
 
   # Get the rows
@@ -137,10 +152,10 @@ def get_team_roster(roster_uri, league_data, team_data):
     skaters.append(skater)
   return skaters
 
+for league in compile_all_league_uris():
+  league_data = get_league_data(league)
+  #print json.dumps(league_data, indent = 4)
+  for team in get_league_teams_data(league_data['team_uri_list']):
+    team.update(league_data)
+    print json.dumps(team, indent = 4)
 
-league_uris = compile_member_league_uris()
-leagues = []
-for league in league_uris:
-  leagues.append(get_league_data(league))
-
-print json.dumps(leagues, indent=4)
