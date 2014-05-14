@@ -214,9 +214,9 @@ def get_team_roster(roster_uri, league_data, team_data):
         skater = {
             'skater_name': skater_name,
             'skater_number': skater_number,
+            'skater_teams': [team_data]
         }
         skater.update(league_data)
-        skater.update(team_data)
         if position:
             skater.update({'position': position})
         skaters.append(skater)
@@ -224,15 +224,30 @@ def get_team_roster(roster_uri, league_data, team_data):
     skater_count += len(skaters)
     return skaters
 
+# Dict, List -> List
+# Takes a list of skaters and a skater and combine the skaters
+# with the list, merging skaters of the same number.
+# This is necessary due to the fact that some skaters may
+# be rostered on multiple teams within a league.
+def add_skater_to_list(skater, ls):
+    for s in ls:
+        print json.dumps(s, indent=4)
+        if s['skater_number'] == skater['skater_number']:
+            s['skater_teams'].extend(skater['skater_teams'])
+            return
+    ls.append(skater)
+    return
+
 skaters = []
 for league_uri in compile_all_league_uris():
+    league_skaters = []
     league_data = get_league_data(league_uri)
     for team_data in get_league_teams_data(league_data['team_uri_list']):
-        team_data.update(league_data)
         roster = get_team_roster(team_data['team_roster_uri'], league_data, team_data)
         if roster:
-            for sktr in roster:
-                skaters.append(sktr)
+            for skater in roster:
+                add_skater_to_list(skater, league_skaters)
+    skaters.extend(league_skaters)
 
 f = open('skaters', 'w')
 f.write(json.dumps(skaters, indent=4))
