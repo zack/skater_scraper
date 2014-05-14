@@ -23,7 +23,7 @@ roster_empty_count = 0
 league_count = 0
 
 # No more than 60 requests per minute
-def open(url, data=None):
+def uopen(url, data=None):
     global total_reqs
     global reqs
     global timeouts
@@ -61,7 +61,7 @@ HEADERS = {'Cookie' : COOKIE}
 def get_league_uris_by_page(league_list_page):
     # Get the page
     req = urllib2.Request(league_list_page, headers=HEADERS)
-    html = open(req).read()
+    html = uopen(req).read()
     soup = BeautifulSoup(html, 'lxml')
 
     # Get the URIs
@@ -110,7 +110,7 @@ def get_league_data(league_page_uri):
 
     # Get the page
     req = urllib2.Request(league_page_uri, headers=HEADERS)
-    html = open(req).read()
+    html = uopen(req).read()
     soup = BeautifulSoup(html, 'lxml')
 
     # Get league name
@@ -164,7 +164,7 @@ def get_league_data(league_page_uri):
 def get_league_teams_data(league_teams_page_uri):
     # Get the page
     req = urllib2.Request(league_teams_page_uri, headers=HEADERS)
-    html = open(req).read()
+    html = uopen(req).read()
     soup = BeautifulSoup(html, 'lxml')
 
     rows = soup.findAll('tr', 'even')
@@ -190,7 +190,7 @@ def get_league_teams_data(league_teams_page_uri):
 def get_team_roster(roster_uri, league_data, team_data):
     # Get the page
     req = urllib2.Request(roster_uri, headers=HEADERS)
-    html = open(req).read()
+    html = uopen(req).read()
     soup = BeautifulSoup(html, 'lxml')
 
     # Check for no roster
@@ -230,9 +230,13 @@ for league_uri in compile_all_league_uris():
     for team_data in get_league_teams_data(league_data['team_uri_list']):
         team_data.update(league_data)
         roster = get_team_roster(team_data['team_roster_uri'], league_data, team_data)
-        skaters.append(roster)
         if roster:
-            print json.dumps(roster, indent=4)
+            for sktr in roster:
+                skaters.append(sktr)
+
+f = open('skaters', 'w')
+f.write(json.dumps(skaters, indent=4))
+f.close()
 
 dur = float(time.time()) - float(start)
 print ('Found %i skaters on %i teams from %i leagues with %i empty rosters.'
