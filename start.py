@@ -7,35 +7,47 @@ from session import get_session_id
 from bs4 import BeautifulSoup
 
 SMALL = True
-start = req_start = time.time()
-total_reqs = reqs = 0
+
+# Global starting variables
+start = time.time()
+# Request data
+total_reqs = 0
+timeouts = 0
+reqs = []
+last_req_idx = -1
+req_debug = []
+# Count data
 skater_count = 0
 roster_count = 0
 roster_empty_count = 0
 league_count = 0
-timeouts = 0
 
+# No more than 60 requests per minute
 def open(url, data=None):
-    global reqs
-    global req_start
     global total_reqs
-    #No more than 30 requests per minute
-    #Not foolproof, as it's not calculating it on a rolling basis,
-    #but the requests are going to be fairly regular, so it's fine.
-    if reqs > 30:
-        dur = time.time() - req_start
+    global reqs
+    global timeouts
+    global last_req_idx
+
+    if len(reqs) < 60:
+        # Just add the request time to the list
+        reqs.append(time.time())
+    else:
+        # This is the index of time of the request from 60 requests ago
+        test_req_idx = (last_req_idx + 1) % 60
+        # Duration between now and time of the request 60 requests ago
+        dur = time.time() - reqs[test_req_idx]
+
         if dur < 60:
-            wait = 60 - dur
-            print "Too many requests - waiting %i seconds..." % wait
-            time.sleep(wait)
-            global timeouts
             timeouts += 1
-            req_start = time.time()
-            reqs = 0
-        else:
-            req_start = time.time()
-            reqs = 0
-    reqs += 1
+            wait = 60-dur
+            print "Throttling request for %i seconds..." % wait
+            time.sleep(wait)
+        # Replace the oldest request time with the current time
+        reqs[test_req_idx] = time.time()
+
+    # Update the last request index
+    last_req_idx = ((last_req_idx + 1) % 60)
     total_reqs += 1
     return urllib2.urlopen(url, data=None)
 
@@ -222,8 +234,7 @@ for league_uri in compile_all_league_uris():
         if roster:
             print json.dumps(roster, indent=4)
 
-end = time.time()
-dur = float(end) - float(start)
+dur = float(time.time()) - float(start)
 print ('Found %i skaters on %i teams from %i leagues with %i empty rosters.'
       % (skater_count, roster_count, league_count, roster_empty_count))
 print ('Completed using %i requests in %i seconds.'
