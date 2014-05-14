@@ -2,20 +2,25 @@ import urllib
 import urllib2
 import json
 import time
+import sys
 from session import get_session_id
 from bs4 import BeautifulSoup
 
 SMALL = True
 start = req_start = time.time()
 total_reqs = reqs = 0
+skater_count = 0
+roster_count = 0
+roster_empty_count = 0
+league_count = 0
 
 def open(url, data=None):
   global reqs
   global req_start
   global total_reqs
-  # No more than 30 requests per minute
-  # Not foolproof, as it's not calculating it on a rolling basis,
-  # but the requests are going to be fairly regular, so it's fine.
+   #No more than 30 requests per minute
+   #Not foolproof, as it's not calculating it on a rolling basis,
+   #but the requests are going to be fairly regular, so it's fine.
   if reqs > 30:
     dur = time.time() - req_start
     if dur < 60:
@@ -76,6 +81,8 @@ def compile_all_league_uris():
   apprentice = compile_apprentice_league_uris()
   members = compile_member_league_uris()
   members.extend(apprentice)
+  global league_count
+  league_count = len(members)
   return members
 
 # String -> Dictionary
@@ -145,12 +152,21 @@ def get_league_teams_data(league_teams_page_uri):
 
   return teams
 # String -> Dictionary
-# Takes a team roster URI and returns a dictinoary of skaters
+# Takes a team roster URI and returns a list of skaters
+# A skater is a dictionary
 def get_team_roster(roster_uri, league_data, team_data):
   # Get the page
   req = urllib2.Request(roster_uri, headers=HEADERS)
   html = open(req).read()
   soup = BeautifulSoup(html, 'lxml')
+
+  # Check for no roster
+  if 'No skaters' in soup.find('div', {'id': 'pageContent'}).findAll('p')[-1].text:
+    global roster_empty_count
+    roster_empty_count += 1
+    return
+  global roster_count
+  roster_count += 1
 
   # Get the rows
   rows = soup.findAll('tr', 'alignMiddle')
@@ -162,13 +178,16 @@ def get_team_roster(roster_uri, league_data, team_data):
     skater_name = row.a.text.encode('ascii', 'ignore')
     position = row.findAll('td')[2].text.encode('ascii', 'ignore')
     skater = {
-      'name': skater_name,
-      'number': skater_number,
+      'skater_name': skater_name,
+      'skater_number': skater_number,
       }
     skater.update(league_data)
+    skater.update(team_data)
     if position:
       skater.update({'position': position})
     skaters.append(skater)
+  global skater_count
+  skater_count += len(skaters)
   return skaters
 
 skaters = []
@@ -176,8 +195,12 @@ for league_uri in compile_all_league_uris():
   league_data = get_league_data(league_uri)
   for team_data in get_league_teams_data(league_data['team_uri_list']):
     team_data.update(league_data)
-    print json.dumps(team_data, indent = 4), '\n'
+    roster = get_team_roster(team_data['team_roster_uri'], league_data, team_data)
+    skaters.append(roster)
+    if roster:
+      print json.dumps(roster, indent=4)
 
 end = time.time()
 dur = end - start
-print '%i requests in %i seconds' % (reqs, dur)
+print 'Collected %i skaters on %i teams from %i leagues with %i empty rosters.' % (skater_count, roster_count, league_count, roster_empty_count)
+print 'Completed using %i requests in %i seconds.' % (total_reqs, dur)
