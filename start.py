@@ -3,42 +3,73 @@ import urllib2
 import json
 import time
 import sys
-import os
 from session import get_session_id
 from bs4 import BeautifulSoup
 
-SMALL = False
+SMALL = True
 
-# Global variables
-start = time.time()
-# Request data
+# Global constants
+BASE_URI = 'https://www.wftda.com'
+COOKIE = 'wftda_session=%s' % get_session_id()
+HEADERS = {'Cookie' : COOKIE}
+START = time.time()
+
+# Request data vars
 total_reqs = 0
-timeouts = 0
 reqs = []
 last_req_idx = -1
 req_debug = []
-# Count data
+
+# Count data vars
 skater_count = 0
 roster_count = 0
 roster_empty_count = 0
 league_count = 0
 total_league_count = 358 # Find this dynamically
 
+def main():
+    global league_count
+    update_status('working')
+
+    skaters = []
+    for league_uri in compile_all_league_uris():
+        league_skaters = []
+        league_data = get_league_data(league_uri)
+        for team_data in get_league_teams_data(league_data['team_uri_list']):
+            roster = get_team_roster(team_data['team_roster_uri'], league_data, team_data)
+            if roster:
+                for skater in roster:
+                    add_skater_to_list(skater, league_skaters)
+        skaters.extend(league_skaters)
+        league_count += 1
+
+    f = open('skaters', 'w')
+    f.write(json.dumps(skaters, indent=4))
+    f.close()
+
+    dur = time.time() - START
+
+    result = ('Found %i skaters on %i teams from %i leagues with %i empty rosters.'
+          % (skater_count, roster_count, league_count, roster_empty_count))
+    sys.stdout.write(result + '\n')
+    sys.stdout.flush()
+    print 'Completed using %i requests in %i seconds.' % (total_reqs, dur)
+
+# Update the command line with the current status of the process
 def update_status(status, wait=0):
     percent_finished = float(league_count) / total_league_count * 100
     if status == 'throttling':
         status = 'throttling (%is)' % wait
-    status = ('%i of %i completed | [%d%%] | status: %s                ' %
-             (league_count, total_league_count, percent_finished, status))
-    sys.stdout.write('\r')
-    sys.stdout.write(status)
+    status = ('%i skaters | %i teams | %i leagues | %d%% | status: %s' %
+             (skater_count, roster_count, league_count,
+                 percent_finished, status))
+    sys.stdout.write(status + '                    \r')
     sys.stdout.flush()
 
 # No more than 60 requests per minute
 def uopen(url, data=None):
     global total_reqs
     global reqs
-    global timeouts
     global last_req_idx
 
     if len(reqs) < 60:
@@ -61,11 +92,8 @@ def uopen(url, data=None):
     # Update the last request index
     last_req_idx = ((last_req_idx + 1) % 60)
     total_reqs += 1
+    update_status('working')
     return urllib2.urlopen(url, data=None)
-
-BASE_URI = 'https://www.wftda.com'
-COOKIE = 'wftda_session=%s' % get_session_id()
-HEADERS = {'Cookie' : COOKIE}
 
 # String -> List
 # Takes a URI for a leagues search result and returns
@@ -247,31 +275,4 @@ def add_skater_to_list(skater, ls):
     ls.append(skater)
     return
 
-update_status('scraping')
-
-skaters = []
-for league_uri in compile_all_league_uris():
-    league_skaters = []
-    league_data = get_league_data(league_uri)
-    for team_data in get_league_teams_data(league_data['team_uri_list']):
-        roster = get_team_roster(team_data['team_roster_uri'], league_data, team_data)
-        if roster:
-            for skater in roster:
-                add_skater_to_list(skater, league_skaters)
-    skaters.extend(league_skaters)
-    league_count += 1
-    update_status('scraping')
-
-f = open('skaters', 'w')
-f.write(json.dumps(skaters, indent=4))
-f.close()
-
-dur = float(time.time()) - float(start)
-print ('Found %i skaters on %i teams from %i leagues with %i empty rosters.'
-      % (skater_count, roster_count, league_count, roster_empty_count))
-print ('Completed using %i requests in %i seconds.'
-      % (total_reqs, dur))
-if timeouts == 1:
-    print 'Throttled requests 1 time.'
-else:
-    print 'Throttled requests %i times.' % timeouts
+main()
