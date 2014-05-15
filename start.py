@@ -3,12 +3,13 @@ import urllib2
 import json
 import time
 import sys
+import os
 from session import get_session_id
 from bs4 import BeautifulSoup
 
-SMALL = True
+SMALL = False
 
-# Global starting variables
+# Global variables
 start = time.time()
 # Request data
 total_reqs = 0
@@ -21,6 +22,17 @@ skater_count = 0
 roster_count = 0
 roster_empty_count = 0
 league_count = 0
+total_league_count = 358 # Find this dynamically
+
+def update_status(status, wait=0):
+    percent_finished = float(league_count) / total_league_count * 100
+    if status == 'throttling':
+        status = 'throttling (%is)' % wait
+    status = ('%i of %i completed | [%d%%] | status: %s                ' %
+             (league_count, total_league_count, percent_finished, status))
+    sys.stdout.write('\r')
+    sys.stdout.write(status)
+    sys.stdout.flush()
 
 # No more than 60 requests per minute
 def uopen(url, data=None):
@@ -38,11 +50,11 @@ def uopen(url, data=None):
         # Duration between now and time of the request 60 requests ago
         dur = time.time() - reqs[test_req_idx]
 
-        if dur < 60:
-            timeouts += 1
+        while dur < 60:
             wait = 60-dur
-            print "Throttling request for %i seconds..." % wait
-            time.sleep(wait)
+            update_status('throttling', wait)
+            time.sleep(1)
+            dur = time.time() - reqs[test_req_idx]
         # Replace the oldest request time with the current time
         reqs[test_req_idx] = time.time()
 
@@ -98,8 +110,6 @@ def compile_all_league_uris():
     apprentice = compile_apprentice_league_uris()
     members = compile_member_league_uris()
     members.extend(apprentice)
-    global league_count
-    league_count = len(members)
     return members
 
 # String -> Dictionary
@@ -231,12 +241,13 @@ def get_team_roster(roster_uri, league_data, team_data):
 # be rostered on multiple teams within a league.
 def add_skater_to_list(skater, ls):
     for s in ls:
-        print json.dumps(s, indent=4)
         if s['skater_number'] == skater['skater_number']:
             s['skater_teams'].extend(skater['skater_teams'])
             return
     ls.append(skater)
     return
+
+update_status('scraping')
 
 skaters = []
 for league_uri in compile_all_league_uris():
@@ -248,6 +259,8 @@ for league_uri in compile_all_league_uris():
             for skater in roster:
                 add_skater_to_list(skater, league_skaters)
     skaters.extend(league_skaters)
+    league_count += 1
+    update_status('scraping')
 
 f = open('skaters', 'w')
 f.write(json.dumps(skaters, indent=4))
