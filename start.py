@@ -7,8 +7,6 @@ import os
 from session import get_session_id
 from bs4 import BeautifulSoup
 
-SMALL = True
-
 # Global constants
 BASE_URI = 'https://www.wftda.com'
 COOKIE = 'wftda_session=%s' % get_session_id()
@@ -27,12 +25,14 @@ roster_count = 0
 roster_empty_count = 0
 league_count = 0
 total_league_count = 358 # At time of writing...
+apprentice_league_page_count = 7 # At time of writing...
+member_league_page_count = 14 # At time of writing...
 
 def main():
     global league_count
     global total_league_count
     update_status('working')
-    total_league_count = update_total_league_count()
+    update_league_counts()
 
     skaters = []
     for league_uri in compile_all_league_uris():
@@ -63,27 +63,32 @@ def main():
     print 'Completed using %i requests in %i seconds.' % (total_reqs, dur)
 
 # Because status bars are important, dammit.
-def update_total_league_count():
+def update_league_counts():
+    global apprentice_league_page_count
+    global member_league_page_count
+    global total_league_count
+
     member_uri = 'https://wftda.com/dashboard/leagues/member-leagues'
     apprentice_uri = 'https://wftda.com/dashboard/leagues/apprentice-leagues'
     html = uopen(member_uri).read()
     soup = BeautifulSoup(html, 'lxml')
-
     m_league_count = int(soup.find('li', 'selection').a.text.split(" ")[0])
+
+    member_league_page_count = m_league_count / 20
 
     html = uopen(apprentice_uri).read()
     soup = BeautifulSoup(html, 'lxml')
-
     a_league_count = int(soup.find('li', 'selection').a.text.split(" ")[0])
 
-    return m_league_count + a_league_count
+    apprentice_league_page_count = a_league_count / 20
 
+    total_league_count = m_league_count + a_league_count
 
 # Update the command line with the current status of the process
 def update_status(status, wait=0):
     percent_finished = float(league_count) / total_league_count * 100
     if status == 'throttling':
-        status = 'throttling (%is)' % wait
+        status += ' (%is)' % wait
     status = ('%i skaters | %i teams | %i leagues | %d%% | status: %s' %
              (skater_count, roster_count, league_count,
                  percent_finished, status))
@@ -138,8 +143,7 @@ def get_league_uris_by_page(league_list_page):
 def compile_member_league_uris():
     league_uris = []
     # Want a full set of data, or no?
-    s = 13 if SMALL else 1
-    for i in range(s,14):
+    for i in range(0, member_league_page_count):
         uri = 'https://wftda.com/dashboard/leagues/member-leagues?page=%i' % i
         league_uris.extend(get_league_uris_by_page(uri))
     return league_uris
@@ -149,8 +153,7 @@ def compile_member_league_uris():
 def compile_apprentice_league_uris():
     league_uris = []
     # Want a full set of data, or no?
-    s = 6 if SMALL else 1
-    for i in range(s,7):
+    for i in range(0, apprentice_league_page_count):
         uri = ('https://wftda.com/dashboard/leagues/apprentice-leagues?page=%i'
               % i)
         league_uris.extend(get_league_uris_by_page(uri))
@@ -181,7 +184,7 @@ def get_league_data(league_page_uri):
     # Get league location
     # Titling cities because some are all caps and that's annoying
     loc = (soup.find('div', 'leagueHeader')
-              .findAll('span')[-1]['title'].split('-'))
+            .findAll('span')[-1]['title'].split('-'))
     if len(loc) == 2:
         location = {
             'Country' : loc[0],
@@ -299,5 +302,7 @@ def add_skater_to_list(skater, ls):
 os.system('tput civis')
 try:
     main()
+except:
+    sys.stdout.flush()
 finally:
     os.system('tput cnorm')
