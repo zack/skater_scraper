@@ -41,7 +41,7 @@ def log_in():
 
     if resp.headers.get("Content-Length", 0) == 0:
         print "Login failed."
-        exit
+        exit()
 
     # Return response and cookies for future request authentication
     return [resp, cj]

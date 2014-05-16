@@ -25,10 +25,12 @@ skater_count = 0
 roster_count = 0
 roster_empty_count = 0
 league_count = 0
-total_league_count = 358 # Find this dynamically
+total_league_count = 358 # At time of writing...
 
 def main():
     global league_count
+    global total_league_count
+    total_league_count = update_total_league_count()
     update_status('working')
 
     skaters = []
@@ -36,7 +38,10 @@ def main():
         league_skaters = []
         league_data = get_league_data(league_uri)
         for team_data in get_league_teams_data(league_data['team_uri_list']):
-            roster = get_team_roster(team_data['team_roster_uri'], league_data, team_data)
+            roster = get_team_roster(
+                        team_data['team_roster_uri'],
+                        league_data, team_data
+                     )
             if roster:
                 for skater in roster:
                     add_skater_to_list(skater, league_skaters)
@@ -49,25 +54,43 @@ def main():
 
     dur = time.time() - START
 
-    result = ('Found %i skaters on %i teams from %i leagues with %i empty rosters.'
+    result = ('Found %i skaters on %i teams from %i leagues '
+              'with %i empty rosters.'
           % (skater_count, roster_count, league_count, roster_empty_count))
     sys.stdout.write(result + '\n')
     sys.stdout.flush()
     print 'Completed using %i requests in %i seconds.' % (total_reqs, dur)
+
+# Because status bars are important, dammit.
+def update_total_league_count():
+    member_uri = 'https://wftda.com/dashboard/leagues/member-leagues'
+    apprentice_uri = 'https://wftda.com/dashboard/leagues/apprentice-leagues'
+    html = uopen(member_uri).read()
+    soup = BeautifulSoup(html, 'lxml')
+
+    m_league_count = int(soup.find('li', 'selection').a.text.split(" ")[0])
+
+    html = uopen(apprentice_uri).read()
+    soup = BeautifulSoup(html, 'lxml')
+
+    a_league_count = int(soup.find('li', 'selection').a.text.split(" ")[0])
+
+    return m_league_count + a_league_count
+
 
 # Update the command line with the current status of the process
 def update_status(status, wait=0):
     percent_finished = float(league_count) / total_league_count * 100
     if status == 'throttling':
         status = 'throttling (%is)' % wait
-    status = ('%i skaters | %i teams | %i leagues | %d%% | status: %s' %
+    status = (' %i skaters | %i teams | %i leagues | %d%% | status: %s' %
              (skater_count, roster_count, league_count,
                  percent_finished, status))
     sys.stdout.write(status + '                    \r')
     sys.stdout.flush()
 
 # No more than 60 requests per minute
-def uopen(url, data=None):
+def uopen(uri):
     global total_reqs
     global reqs
     global last_req_idx
@@ -93,15 +116,15 @@ def uopen(url, data=None):
     last_req_idx = ((last_req_idx + 1) % 60)
     total_reqs += 1
     update_status('working')
-    return urllib2.urlopen(url, data=None)
+    req = urllib2.Request(uri, headers=HEADERS)
+    return urllib2.urlopen(req)
 
 # String -> List
 # Takes a URI for a leagues search result and returns
 # a list of all league URIs on the page
 def get_league_uris_by_page(league_list_page):
     # Get the page
-    req = urllib2.Request(league_list_page, headers=HEADERS)
-    html = uopen(req).read()
+    html = uopen(league_list_page).read()
     soup = BeautifulSoup(html, 'lxml')
 
     # Get the URIs
@@ -147,8 +170,7 @@ def get_league_data(league_page_uri):
     league_data = {'wftda_uri': league_page_uri}
 
     # Get the page
-    req = urllib2.Request(league_page_uri, headers=HEADERS)
-    html = uopen(req).read()
+    html = uopen(league_page_uri).read()
     soup = BeautifulSoup(html, 'lxml')
 
     # Get league name
@@ -201,8 +223,7 @@ def get_league_data(league_page_uri):
 # Takes the team page of a league and returns a dictionary of the teams' data
 def get_league_teams_data(league_teams_page_uri):
     # Get the page
-    req = urllib2.Request(league_teams_page_uri, headers=HEADERS)
-    html = uopen(req).read()
+    html = uopen(league_teams_page_uri).read()
     soup = BeautifulSoup(html, 'lxml')
 
     rows = soup.findAll('tr', 'even')
@@ -227,8 +248,7 @@ def get_league_teams_data(league_teams_page_uri):
 # A skater is a dictionary
 def get_team_roster(roster_uri, league_data, team_data):
     # Get the page
-    req = urllib2.Request(roster_uri, headers=HEADERS)
-    html = uopen(req).read()
+    html = uopen(roster_uri).read()
     soup = BeautifulSoup(html, 'lxml')
 
     # Check for no roster
