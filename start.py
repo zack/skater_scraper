@@ -3,6 +3,7 @@ import urllib2
 import json
 import time
 import sys
+import os
 from session import get_session_id
 from bs4 import BeautifulSoup
 
@@ -30,8 +31,8 @@ total_league_count = 358 # At time of writing...
 def main():
     global league_count
     global total_league_count
-    total_league_count = update_total_league_count()
     update_status('working')
+    total_league_count = update_total_league_count()
 
     skaters = []
     for league_uri in compile_all_league_uris():
@@ -83,7 +84,7 @@ def update_status(status, wait=0):
     percent_finished = float(league_count) / total_league_count * 100
     if status == 'throttling':
         status = 'throttling (%is)' % wait
-    status = (' %i skaters | %i teams | %i leagues | %d%% | status: %s' %
+    status = ('%i skaters | %i teams | %i leagues | %d%% | status: %s' %
              (skater_count, roster_count, league_count,
                  percent_finished, status))
     sys.stdout.write(status + '                    \r')
@@ -295,4 +296,8 @@ def add_skater_to_list(skater, ls):
     ls.append(skater)
     return
 
-main()
+os.system('tput civis')
+try:
+    main()
+finally:
+    os.system('tput cnorm')
