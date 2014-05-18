@@ -3,53 +3,65 @@ import urllib
 import urllib2
 import getpass
 
-# The purpose of this file is to log in and get the session_id.
-# This is used by start.py so that at the beginning of every run an
-# updated session id is captured for use with every request in the script.
-# To use, just updated lines 31-32 with your login info.
+# For Session Management
 
-# -> [urllib2.Response, cookielib.cookieJar]
-# Logs in and returns the response and cookies
-def log_in():
+class SessionManager:
+    AUTHENTICATION_URL = 'https://wftda.com/login'
 
-    cj = cookielib.CookieJar()
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+    # ->
+    # Logs in and sets the response object
+    def __init__(self):
+        self.generate_opener()
 
-    # User agent just in case
-    opener.addheaders = [(
-        'User-agent',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit'
-        '/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'
-    )]
+        while True:
+            self.authenticate()
+            resp = self.update_cookie()
+            if resp.headers.get("Content-Length", 0) == 0:
+                print "Login failed. Try again?"
+            else:
+                print "Login successful!"
+                break
 
-    urllib2.install_opener(opener)
+    # Generates the opener to be used for future requests
+    # ->
+    def generate_opener(self):
+        global cookiejar
+        cookiejar = cookielib.CookieJar()
+        opener = urllib2.build_opener(
+                                    urllib2.HTTPCookieProcessor(cookiejar)
+                                )
 
-    authentication_url = 'https://wftda.com/login'
+        # User agent just in case
+        opener.addheaders = [(
+            'User-agent',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_2) AppleWebKit'
+            '/537.36 (KHTML, like Gecko) Chrome/34.0.1847.131 Safari/537.36'
+        )]
 
-    usernm = raw_input('Email: ')
-    passwd = getpass.getpass('Password: ')
+        urllib2.install_opener(opener)
 
-    payload = {
-        'submitButton': '',
-        'Login-Email': usernm,
-        'Login-Password': passwd
-    }
+    # Gets login data from user and sets auth_payload
+    # ->
+    def authenticate(self):
+        global auth_payload
+        usernm = raw_input('Email: ')
+        passwd = getpass.getpass('Password: ')
+        auth_payload = {
+            'submitButton': '',
+            'Login-Email': usernm,
+            'Login-Password': passwd
+        }
 
-    data = urllib.urlencode(payload)
-    req = urllib2.Request(authentication_url, data)
-    resp = urllib2.urlopen(req)
+    # -> String
+    # Logs in and returns the session id
+    def get_session_id(self):
+        session_id = cookiejar._cookies['wftda.com']['/']['wftda_session'].value
+        return session_id
 
-    if resp.headers.get("Content-Length", 0) == 0:
-        print "Login failed."
-        exit()
+    # Updates the cookie with existing authentication data
+    def update_cookie(self):
+        data = urllib.urlencode(auth_payload)
+        req = urllib2.Request(SessionManager.AUTHENTICATION_URL, data)
+        resp = urllib2.urlopen(req)
 
-    # Return response and cookies for future request authentication
-    return [resp, cj]
-
-# -> String
-# Logs in and returns the session id
-def get_session_id():
-    response = log_in()
-    cookies = response[1]._cookies
-    session_id = cookies['wftda.com']['/']['wftda_session'].value
-    return session_id
+        return resp

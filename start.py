@@ -4,13 +4,12 @@ import json
 import time
 import sys
 import os
-from session import get_session_id
+import session
 from bs4 import BeautifulSoup
 
 # Global constants
+SESSION_MANAGER = session.SessionManager()
 BASE_URI = 'https://www.wftda.com'
-COOKIE = 'wftda_session=%s' % get_session_id()
-HEADERS = {'Cookie' : COOKIE}
 START = time.time()
 
 # Request data vars
@@ -31,11 +30,12 @@ member_league_page_count = 14 # At time of writing...
 def main():
     global league_count
     global total_league_count
+    get_cookie()
     update_status('working')
     update_league_counts()
 
     skaters = []
-    for league_uri in compile_all_league_uris():
+    for league_uri in compile_member_league_uris():
         league_skaters = []
         league_data = get_league_data(league_uri)
         for team_data in get_league_teams_data(league_data['team_uri_list']):
@@ -61,6 +61,14 @@ def main():
     sys.stdout.write(result + '\n')
     sys.stdout.flush()
     print 'Completed using %i requests in %i seconds.' % (total_reqs, dur)
+
+# Update cookie used for authentication
+# ->
+def get_cookie(update=False):
+    global cookie
+    if update:
+        SESSION_MANAGER.update_cookie()
+    cookie = 'wftda_session=%s' % SESSION_MANAGER.get_session_id()
 
 # Because status bars are important, dammit.
 def update_league_counts():
@@ -122,8 +130,16 @@ def uopen(uri):
     last_req_idx = ((last_req_idx + 1) % 60)
     total_reqs += 1
     update_status('working')
-    req = urllib2.Request(uri, headers=HEADERS)
-    return urllib2.urlopen(req)
+    req = urllib2.Request(uri, headers={'Cookie' : cookie})
+    resp = urllib2.urlopen(req)
+    while 'login' in resp.geturl():
+        update_status('reauthenticating')
+        get_cookie(True)
+        req = urllib2.Request(uri, headers={'Cookie' : cookie})
+        resp = urllib2.urlopen(req)
+    else:
+        update_status('working')
+    return resp
 
 # String -> List
 # Takes a URI for a leagues search result and returns
