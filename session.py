@@ -1,7 +1,7 @@
-import cookielib
-import urllib
 import urllib2
-import getpass
+from cookielib import CookieJar
+from getpass import getpass
+from urllib import urlencode
 
 # For Session Management
 
@@ -26,7 +26,7 @@ class SessionManager:
     # ->
     def generate_opener(self):
         global cookiejar
-        cookiejar = cookielib.CookieJar()
+        cookiejar = CookieJar()
         opener = urllib2.build_opener(
                                     urllib2.HTTPCookieProcessor(cookiejar)
                                 )
@@ -45,7 +45,7 @@ class SessionManager:
     def authenticate(self):
         global auth_payload
         usernm = raw_input('Email: ')
-        passwd = getpass.getpass('Password: ')
+        passwd = getpass('Password: ')
         auth_payload = {
             'submitButton': '',
             'Login-Email': usernm,
@@ -60,7 +60,7 @@ class SessionManager:
 
     # Updates the cookie with existing authentication data
     def update_cookie(self):
-        data = urllib.urlencode(auth_payload)
+        data = urlencode(auth_payload)
         req = urllib2.Request(SessionManager.AUTHENTICATION_URL, data)
         resp = urllib2.urlopen(req)
 

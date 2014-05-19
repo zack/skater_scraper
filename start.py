@@ -1,16 +1,17 @@
-import urllib
-import urllib2
-import json
-import time
-import sys
-import os
-import session
+from os import system
+from sys import stdout
+from time import time
+from json import dumps
+from time import sleep
 from bs4 import BeautifulSoup
+from datetime import timedelta
+from session import SessionManager
+from urllib2 import Request, urlopen
 
 # Global constants
-SESSION_MANAGER = session.SessionManager()
+SESSION_MANAGER = SessionManager()
 BASE_URI = 'https://www.wftda.com'
-START = time.time()
+START = time()
 
 # Request data vars
 total_reqs = 0
@@ -31,11 +32,11 @@ def main():
     global league_count
     global total_league_count
     get_cookie()
-    update_status('working')
     update_league_counts()
+    update_status('working')
 
     skaters = []
-    for league_uri in compile_member_league_uris():
+    for league_uri in compile_apprentice_league_uris():
         league_skaters = []
         league_data = get_league_data(league_uri)
         for team_data in get_league_teams_data(league_data['team_uri_list']):
@@ -50,17 +51,20 @@ def main():
         league_count += 1
 
     f = open('skaters', 'w')
-    f.write(json.dumps(skaters, indent=4))
+    f.write(dumps(skaters, indent=4))
     f.close()
 
-    dur = time.time() - START
+    dur = time() - START
+    dur_m = dur//60
+    dur_s = dur%60
 
     result = ('Found %i skaters on %i teams from %i leagues '
-              'with %i empty rosters.'
-          % (skater_count, roster_count, league_count, roster_empty_count))
-    sys.stdout.write(result + '\n')
-    sys.stdout.flush()
-    print 'Completed using %i requests in %i seconds.' % (total_reqs, dur)
+              'with %i empty rosters.                       '
+             % (skater_count, roster_count, league_count, roster_empty_count))
+    stdout.write(result + '\n')
+    stdout.flush()
+    print ('Completed using %i requests in %i minutes and %i seconds.' %
+          (total_reqs, dur_m, dur_s))
 
 # Update cookie used for authentication
 # ->
@@ -97,11 +101,12 @@ def update_status(status, wait=0):
     percent_finished = float(league_count) / total_league_count * 100
     if status == 'throttling':
         status += ' (%is)' % wait
-    status = ('%i skaters | %i teams | %i leagues | %d%% | status: %s' %
+    elapsed = str(timedelta(seconds=time() - START))
+    status = ('%i skaters | %i teams | %i leagues | %d%% | %s | status: %s' %
              (skater_count, roster_count, league_count,
-                 percent_finished, status))
-    sys.stdout.write(status + '                    \r')
-    sys.stdout.flush()
+                 percent_finished, elapsed, status))
+    stdout.write(status + '                    \r')
+    stdout.flush()
 
 # No more than 60 requests per minute
 def uopen(uri):
@@ -111,32 +116,32 @@ def uopen(uri):
 
     if len(reqs) < 60:
         # Just add the request time to the list
-        reqs.append(time.time())
+        reqs.append(time())
     else:
         # This is the index of time of the request from 60 requests ago
         test_req_idx = (last_req_idx + 1) % 60
         # Duration between now and time of the request 60 requests ago
-        dur = time.time() - reqs[test_req_idx]
+        dur = time() - reqs[test_req_idx]
 
         while dur < 60:
             wait = 60-dur
             update_status('throttling', wait)
-            time.sleep(1)
-            dur = time.time() - reqs[test_req_idx]
+            sleep(1)
+            dur = time() - reqs[test_req_idx]
         # Replace the oldest request time with the current time
-        reqs[test_req_idx] = time.time()
+        reqs[test_req_idx] = time()
 
     # Update the last request index
     last_req_idx = ((last_req_idx + 1) % 60)
     total_reqs += 1
     update_status('working')
-    req = urllib2.Request(uri, headers={'Cookie' : cookie})
-    resp = urllib2.urlopen(req)
+    req = Request(uri, headers={'Cookie' : cookie})
+    resp = urlopen(req)
     while 'login' in resp.geturl():
         update_status('reauthenticating')
         get_cookie(True)
-        req = urllib2.Request(uri, headers={'Cookie' : cookie})
-        resp = urllib2.urlopen(req)
+        req = Request(uri, headers={'Cookie' : cookie})
+        resp = urlopen(req)
     else:
         update_status('working')
     return resp
@@ -199,8 +204,9 @@ def get_league_data(league_page_uri):
 
     # Get league location
     # Titling cities because some are all caps and that's annoying
-    loc = (soup.find('div', 'leagueHeader')
-            .findAll('span')[-1]['title'].split('-'))
+    spans = soup.find('div', 'leagueHeader').findAll('span')
+    if len(spans) >= 1:
+        loc = spans[-1].get('title', '').split('-')
     if len(loc) == 2:
         location = {
             'Country' : loc[0],
@@ -219,8 +225,7 @@ def get_league_data(league_page_uri):
             'City' : loc[2].title() + '-' + loc[3].title()
         }
     else:
-        print "Unexpected hyphens in header location"
-        raise
+        location={'Country':'','State/Province':'','City':''}
     league_data['league_location'] = location
 
     # Get league membership status and region (since they're in the same tag)
@@ -315,10 +320,11 @@ def add_skater_to_list(skater, ls):
     ls.append(skater)
     return
 
-os.system('tput civis')
-try:
-    main()
-except:
-    sys.stdout.flush()
-finally:
-    os.system('tput cnorm')
+main()
+#system('tput civis')
+#try:
+    #main()
+#except:
+    #stdout.flush()
+#finally:
+    #system('tput cnorm')
