@@ -21,7 +21,8 @@ req_debug = []
 
 # Count data vars
 skater_count = 0
-roster_count = 0
+team_count = 0 # Increment for every team
+roster_count = 0 # Increment for every team roster with skaters
 roster_empty_count = 0
 league_count = 0
 total_league_count = 358 # At time of writing...
@@ -58,9 +59,10 @@ def main():
     dur_m = dur//60
     dur_s = dur%60
 
-    result = ('Found %i skaters on %i teams from %i leagues '
-              'with %i empty rosters.                       '
-             % (skater_count, roster_count, league_count, roster_empty_count))
+    result = ('Found %i skaters on %i rosters on %i teams from %i leagues'
+              ' with %i empty rosters.                       '
+             % (skater_count, roster_count, team_count,
+                league_count, roster_empty_count))
     stdout.write(result + '\n')
     stdout.flush()
     print ('Completed using %i requests in %i minutes and %i seconds.' %
@@ -103,7 +105,7 @@ def update_status(status, wait=0):
         status += ' (%is)' % wait
     elapsed = str(timedelta(seconds=time() - START))
     status = ('%i skaters | %i teams | %i leagues | %d%% | %s | status: %s' %
-             (skater_count, roster_count, league_count,
+             (skater_count, team_count, league_count,
                  percent_finished, elapsed, status))
     stdout.write(status + '                    \r')
     stdout.flush()
@@ -164,7 +166,7 @@ def get_league_uris_by_page(league_list_page):
 def compile_member_league_uris():
     league_uris = []
     # Want a full set of data, or no?
-    for i in range(0, member_league_page_count):
+    for i in range(0, member_league_page_count+1):
         uri = 'https://wftda.com/dashboard/leagues/member-leagues?page=%i' % i
         league_uris.extend(get_league_uris_by_page(uri))
     return league_uris
@@ -174,7 +176,7 @@ def compile_member_league_uris():
 def compile_apprentice_league_uris():
     league_uris = []
     # Want a full set of data, or no?
-    for i in range(0, apprentice_league_page_count):
+    for i in range(0, apprentice_league_page_count+1):
         uri = ('https://wftda.com/dashboard/leagues/apprentice-leagues?page=%i'
               % i)
         league_uris.extend(get_league_uris_by_page(uri))
@@ -276,12 +278,16 @@ def get_team_roster(roster_uri, league_data, team_data):
     html = uopen(roster_uri).read()
     soup = BeautifulSoup(html, 'lxml')
 
+    global team_count
+    team_count += 1
+
     # Check for no roster
     if 'No skaters' in (soup.find('div', {'id': 'pageContent'}).
                            findAll('p')[-1].text):
         global roster_empty_count
         roster_empty_count += 1
         return
+
     global roster_count
     roster_count += 1
 
