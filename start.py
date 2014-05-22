@@ -1,5 +1,7 @@
+from __future__ import division
 from os import system
 from sys import stdout
+from math import ceil
 from time import time
 from json import dumps
 from time import sleep
@@ -88,13 +90,13 @@ def update_league_counts():
     soup = BeautifulSoup(html, 'lxml')
     m_league_count = int(soup.find('li', 'selection').a.text.split(" ")[0])
 
-    member_league_page_count = m_league_count / 20
+    member_league_page_count = int(ceil(m_league_count / 20))
 
     html = uopen(apprentice_uri).read()
     soup = BeautifulSoup(html, 'lxml')
     a_league_count = int(soup.find('li', 'selection').a.text.split(" ")[0])
 
-    apprentice_league_page_count = a_league_count / 20
+    apprentice_league_page_count = int(ceil(a_league_count / 20))
 
     total_league_count = m_league_count + a_league_count
 
@@ -166,7 +168,7 @@ def get_league_uris_by_page(league_list_page):
 def compile_member_league_uris():
     league_uris = []
     # Want a full set of data, or no?
-    for i in range(0, member_league_page_count+1):
+    for i in range(1, member_league_page_count+1):
         uri = 'https://wftda.com/dashboard/leagues/member-leagues?page=%i' % i
         league_uris.extend(get_league_uris_by_page(uri))
     return league_uris
@@ -176,7 +178,7 @@ def compile_member_league_uris():
 def compile_apprentice_league_uris():
     league_uris = []
     # Want a full set of data, or no?
-    for i in range(0, apprentice_league_page_count+1):
+    for i in range(1, apprentice_league_page_count+1):
         uri = ('https://wftda.com/dashboard/leagues/apprentice-leagues?page=%i'
               % i)
         league_uris.extend(get_league_uris_by_page(uri))
