@@ -39,7 +39,7 @@ def main():
     update_status('working')
 
     skaters = []
-    for league_uri in compile_apprentice_league_uris():
+    for league_uri in compile_all_league_uris():
         league_skaters = []
         league_data = get_league_data(league_uri)
         for team_data in get_league_teams_data(league_data['team_uri_list']):
@@ -299,17 +299,23 @@ def get_team_roster(roster_uri, league_data, team_data):
     # Get the skaters
     skaters = []
     for row in rows:
-        skater_number = row.find('td').text.encode('ascii', 'ignore')
+        skater = {}
+        # Sometimes there's extra name text. If so, keep elsewhere and clear.
+        span = row.a.find('span')
+        if span:
+            supplemental = span.text.encode('ascii', 'ignore')
+            skater.update({'skater_name_supplemental': supplemental})
+            span.clear()
         skater_name = row.a.text.encode('ascii', 'ignore')
+        skater_number = row.find('td').text.encode('ascii', 'ignore')
         position = row.findAll('td')[2].text.encode('ascii', 'ignore')
-        skater = {
-            'skater_name': skater_name,
-            'skater_number': skater_number,
-            'skater_teams': [team_data]
-        }
-        skater.update(league_data)
+        skater.update({'skater_name': skater_name})
+        skater.update({'skater_number': skater_number})
+        skater.update({'skater_teams': [team_data]})
+        # Some skaters have a position (Captain)
         if position:
             skater.update({'position': position})
+        skater.update(league_data)
         skaters.append(skater)
     global skater_count
     skater_count += len(skaters)
@@ -328,11 +334,10 @@ def add_skater_to_list(skater, ls):
     ls.append(skater)
     return
 
-main()
-#system('tput civis')
-#try:
-    #main()
-#except:
-    #stdout.flush()
-#finally:
-    #system('tput cnorm')
+system('tput civis')
+try:
+    main()
+except:
+    stdout.flush()
+finally:
+    system('tput cnorm')
