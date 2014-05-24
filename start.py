@@ -39,7 +39,8 @@ def main():
     update_status('working')
 
     skaters = []
-    for league_uri in compile_all_league_uris():
+    #for league_uri in compile_all_league_uris():
+    for league_uri in ["https://wftda.com/dashboard/leagues/detail/mu7sm8zfdeiq"]:
         league_skaters = []
         league_data = get_league_data(league_uri)
         for team_data in get_league_teams_data(league_data['team_uri_list']):
