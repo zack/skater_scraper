@@ -13,7 +13,6 @@ is roughly 8000 strong. The compiled list is currently about
     * [Beautiful Soup 4](http://www.crummy.com/software/BeautifulSoup/)
   * This script requires a wftda.com username and password
   * The script has built-in request throttling to 60/min.
-    * **Please do not remove this!**
 
 Addtionally, each skater's dataset includes:
 
