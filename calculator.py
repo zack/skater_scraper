@@ -22,39 +22,49 @@ apprentice_l = 0
 member_f = 0
 apprentice_f = 0
 
-# Let's look at numbers
+counts = {
+        'Members': {
+            'Numeric': 0,
+            'Alphanumeric': 0,
+            'Long': 0,
+            'Short': 0,
+            'Terrible' : 0
+            },
+        'Apprentices': {
+            'Numeric': 0,
+            'Alphanumeric': 0,
+            'Long': 0,
+            'Short': 0,
+            'Terrible' : 0
+            }
+        }
+
+
+# Let's look a skater
 for skater in data:
     num = skater['skater_number']
     if skater['league_status'] == "Apprentice":
         if is_number(num):
-            apprentice_1 += 1
+            counts['Apprentices']['Numeric'] += 1
         else:
             apprentice_a += 1
+            counts['Apprentices']['Alphanumeric'] += 1
             if len(num) == 4:
-                apprentice_f += 1
+                counts['Apprentices']['Terrible'] += 1
         if len(num) > 2:
-            apprentice_l += 1
+            counts['Apprentices']['Long'] += 1
         else:
-            apprentice_s += 1
+            counts['Apprentices']['Short'] += 1
     else:
         if is_number(num):
-            member_1 += 1
+            counts['Members']['Numeric'] += 1
         else:
-            member_a += 1
+            counts['Members']['Alphanumeric'] += 1
             if len(num) == 4:
-                member_f += 1
+                counts['Members']['Terrible'] += 1
         if len(num) > 2:
-            member_l += 1
+            counts['Members']['Long'] += 1
         else:
-            member_s += 1
+            counts['Members']['Short'] += 1
 
-print "apprentice numeric: %i" % apprentice_1
-print "apprentice alphanumeric: %i" % apprentice_a
-print "apprentice short: %i" % apprentice_s
-print "apprentice long: %i" % apprentice_l
-print "apprentice f: %i" % apprentice_f
-print "member numeric: %i" % member_1
-print "member alphanumeric: %i" % member_a
-print "member short: %i" % member_s
-print "member long: %i" % member_l
-print "member f: %i" % member_f
+print json.dumps(counts, indent=4)
