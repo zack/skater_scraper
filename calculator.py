@@ -27,8 +27,10 @@ counts = {
             'Total': 0,
             'Numeric': 0,
             'Alphanumeric': 0,
-            'Long': 0,
-            'Short': 0,
+            '1': 0,
+            '2': 0,
+            '3': 0,
+            '4': 0,
             }
         }
 counts['All']['Syllables'] = dict.fromkeys(range(1, 12), 0)
@@ -52,10 +54,14 @@ for skater in data:
         counts[skater_type]['Numeric'] += 1
     else:
         counts[skater_type]['Alphanumeric'] += 1
-    if len(num) < 3:
-        counts[skater_type]['Short'] += 1
+    if len(num) == 1:
+        counts[skater_type]['1'] += 1
+    if len(num) == 2:
+        counts[skater_type]['2'] += 1
+    if len(num) == 3:
+        counts[skater_type]['3'] += 1
     else:
-        counts[skater_type]['Long'] += 1
+        counts[skater_type]['4'] += 1
 
 
 for field in counts['Members']:
