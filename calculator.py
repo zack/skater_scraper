@@ -73,6 +73,6 @@ for field in counts['Members']:
         counts['All'][field] = (counts['Members'][field] +
             counts['Apprentices'][field])
 
-f = open('skater_data', 'w')
+f = open('skater_data.json', 'w')
 f.write(json.dumps(counts, indent=4))
 f.close()
