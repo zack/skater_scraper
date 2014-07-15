@@ -53,6 +53,7 @@ def main():
         skaters.extend(league_skaters)
         league_count += 1
 
+    skaters = {'timestamp': time(), 'skaters': skaters}
     f = open('skaters', 'w')
     f.write(dumps(skaters, indent=4))
     f.close()
