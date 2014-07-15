@@ -213,23 +213,23 @@ def get_league_data(league_page_uri):
         loc = spans[-1].get('title', '').split('-')
     if len(loc) == 2:
         location = {
-            'Country' : loc[0],
-            'City': loc[1].title()
+            'country' : loc[0],
+            'city': loc[1].title()
         }
     elif len(loc) == 3:
         location = {
-            'Country' : loc[0],
-            'State/Province': loc[1],
-            'City' : loc[2].title()
+            'country' : loc[0],
+            'state/province': loc[1],
+            'city' : loc[2].title()
         }
     elif len(loc) == 4:
         location = {
-            'Country' : loc[0],
-            'State/Province': loc[1],
-            'City' : loc[2].title() + '-' + loc[3].title()
+            'country' : loc[0],
+            'state/province': loc[1],
+            'city' : loc[2].title() + '-' + loc[3].title()
         }
     else:
-        location={'Country':'','State/Province':'','City':''}
+        location={'country':'','state/province':'','city':''}
     league_data['league_location'] = location
 
     # Get league membership status and region (since they're in the same tag)
