@@ -17,7 +17,7 @@ def get_syllables(n):
     for c in n.upper():
         if c == 'W':
             s +=3
-        elif c == '7':
+        elif c == '7' or c == '0':
             s += 2
         else:
             s += 1
