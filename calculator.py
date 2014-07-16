@@ -1,6 +1,7 @@
 import json
 from operator import add
 from copy import deepcopy
+from numpy import zeros
 
 json_data=open('skaters.json').read()
 data = json.loads(json_data)['skaters']
@@ -29,7 +30,8 @@ counts = {
             'Numeric': 0,
             'Alphanumeric': 0,
             'Chars': [0]*4,
-            'Syllables': [0]*12
+            'Syllables': [0]*12,
+            'Letters': [[0 for i in range(4)] for i in range(4)]
             }
         }
 counts['Members'] = deepcopy(counts['All'])
@@ -55,12 +57,19 @@ for skater in data:
 
     counts[skater_type]['Chars'][len(num)-1] += 1
 
+    count = lambda l1,l2: sum([1 for x in l1 if x in l2])
+    lets = len(num) - count(num, "0123456789")
+    counts[skater_type]['Letters'][lets][len(num)-1] += 1
+
 # Compute totals
 for field in counts['Members']:
     if field == 'Syllables' or field == 'Chars':
         counts['All'][field] = map(add,
                 counts['Members'][field],
                 counts['Apprentices'][field])
+    elif field == 'Letters':
+        # not using this anyway
+        pass
     else:
         counts['All'][field] = (counts['Members'][field] +
             counts['Apprentices'][field])
@@ -69,6 +78,13 @@ for field in counts['Members']:
 for s in ['All', 'Members', 'Apprentices']:
     for q in ['Chars', 'Syllables']:
         counts[s][q] = [n*10000/counts[s]['Total']/100.00 for n in counts[s][q]]
+for s in ['Members', 'Apprentices']:
+    for q in ['Letters']:
+        totals = [sum(i) for i in zip(*counts[s][q])]
+        index = 0
+        for t in counts[s][q]:
+            counts[s][q][index] = [i*10000/totals[t.index(i)]/100.00 for i in t]
+            index += 1
 
 f = open('skater_data.json', 'w')
 f.write(json.dumps(counts, indent=4))
