@@ -1,8 +1,9 @@
 import json
+from operator import add
 from copy import deepcopy
 
-json_data=open('skaters').read()
-data = json.loads(json_data)
+json_data=open('skaters.json').read()
+data = json.loads(json_data)['skaters']
 
 def is_number(s):
     try:
@@ -27,13 +28,10 @@ counts = {
             'Total': 0,
             'Numeric': 0,
             'Alphanumeric': 0,
-            '1': 0,
-            '2': 0,
-            '3': 0,
-            '4': 0,
+            'Chars': [0]*4,
+            'Syllables': [0]*12
             }
         }
-counts['All']['Syllables'] = dict.fromkeys(range(1, 12), 0)
 counts['Members'] = deepcopy(counts['All'])
 counts['Apprentices'] = deepcopy(counts['All'])
 
@@ -54,24 +52,23 @@ for skater in data:
         counts[skater_type]['Numeric'] += 1
     else:
         counts[skater_type]['Alphanumeric'] += 1
-    if len(num) == 1:
-        counts[skater_type]['1'] += 1
-    if len(num) == 2:
-        counts[skater_type]['2'] += 1
-    if len(num) == 3:
-        counts[skater_type]['3'] += 1
-    else:
-        counts[skater_type]['4'] += 1
 
+    counts[skater_type]['Chars'][len(num)-1] += 1
 
+# Compute totals
 for field in counts['Members']:
-    if field == 'Syllables':
-        for n in counts['All'][field]:
-            counts['All'][field][n] = (counts['Members'][field][n] +
-                counts['Apprentices'][field][n])
+    if field == 'Syllables' or field == 'Chars':
+        counts['All'][field] = map(add,
+                counts['Members'][field],
+                counts['Apprentices'][field])
     else:
         counts['All'][field] = (counts['Members'][field] +
             counts['Apprentices'][field])
+
+# Normalize some fields
+for s in ['All', 'Members', 'Apprentices']:
+    for q in ['Chars', 'Syllables']:
+        counts[s][q] = [n*10000/counts[s]['Total']/100.00 for n in counts[s][q]]
 
 f = open('skater_data.json', 'w')
 f.write(json.dumps(counts, indent=4))
