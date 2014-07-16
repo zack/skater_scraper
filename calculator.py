@@ -1,3 +1,4 @@
+from __future__ import division
 import json
 from operator import add
 from copy import deepcopy
@@ -59,32 +60,33 @@ for skater in data:
 
     count = lambda l1,l2: sum([1 for x in l1 if x in l2])
     lets = len(num) - count(num, "0123456789")
-    counts[skater_type]['Letters'][lets][len(num)-1] += 1
+    counts[skater_type]['Letters'][len(num)-1][lets] += 1
 
-# Compute totals
-for field in counts['Members']:
-    if field == 'Syllables' or field == 'Chars':
-        counts['All'][field] = map(add,
-                counts['Members'][field],
-                counts['Apprentices'][field])
-    elif field == 'Letters':
-        # not using this anyway
-        pass
-    else:
-        counts['All'][field] = (counts['Members'][field] +
-            counts['Apprentices'][field])
+# Compute totals (no longer used but might in the future)
+#for field in counts['Members']:
+    #if field == 'Syllables' or field == 'Chars':
+        #counts['All'][field] = map(add,
+                #counts['Members'][field],
+                #counts['Apprentices'][field])
+    #elif field == 'Letters':
+        #pass
+    #else:
+        #counts['All'][field] = (counts['Members'][field] +
+            #counts['Apprentices'][field])
 
 # Normalize some fields
-for s in ['All', 'Members', 'Apprentices']:
-    for q in ['Chars', 'Syllables']:
-        counts[s][q] = [n*10000/counts[s]['Total']/100.00 for n in counts[s][q]]
 for s in ['Members', 'Apprentices']:
-    for q in ['Letters']:
-        totals = [sum(i) for i in zip(*counts[s][q])]
-        index = 0
-        for t in counts[s][q]:
-            counts[s][q][index] = [i*10000/totals[t.index(i)]/100.00 for i in t]
-            index += 1
+    for q in ['Chars', 'Syllables']:
+        counts[s][q] = [round(n*100/counts[s]['Total'], 2) for n in counts[s][q]]
+for s in ['Members', 'Apprentices']:
+    a_new = [[0 for i in range(4)] for i in range(4)]
+    for i, l in enumerate(counts[s]['Letters']):
+        counts[s]['Letters'][i] = [round(x*100/sum(l),2) for x in l]
+        # Rotate array
+        for row_i, row in enumerate(counts[s]['Letters']):
+            for col_i, col in enumerate(row):
+                a_new[col_i][row_i] = col
+    counts[s]['Letters'] = a_new
 
 f = open('skater_data.json', 'w')
 f.write(json.dumps(counts, indent=4))
