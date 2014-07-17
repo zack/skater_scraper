@@ -1,5 +1,4 @@
 .DS_Store
 *.pyc
 *.swp
-skaters.json
-skater_data.json
+*.json
