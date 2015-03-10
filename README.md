@@ -15,21 +15,21 @@ is roughly 8000 strong. The compiled list is currently about
 
 Each skater's entry includes:
 
-  * Skater Name
-  * Skater Supplementary Name Information (Optional)
+  * Skater [Derby] Name
+  * Skater Supplementary Name Information (Optional, usually explains a pun)
   * Skater Position (e.g. Captain; Optional)
   * Skater Number
   * League Name
   * League Region
   * League Location
-  * League Status (Member/Apprentice)
     * City
     * State/Province (if applicable)
     * Country
+  * League Status (Member/Apprentice)
   * Skater Teams (A skater may be on more than one team)
     * Team Name
     * Team Roster URI (the URI for them roster in the dashboard)
     * Team Type (Charter, Travel, or Home)
-  * WFTDA URI (the URI for the league in the dashboard)
+  * League WFTDA URI (the URI for the league in the dashboard)
 
 Thanks for reading!
